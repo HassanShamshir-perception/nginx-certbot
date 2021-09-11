@@ -1,21 +1,45 @@
-version: '3'
-
-services:
-  nginx:
-    image: nginx:1.15-alpine
-    restart: unless-stopped
+  #
+  # Frontend
+  #
+  ui:
+    container_name: web-ui
+    restart: always
+#Multistage frontend image with nginx(containing both frontend and nginx image)
+    image: frontend-image-name
     volumes:
       - ./data/nginx:/etc/nginx/conf.d
       - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
+      - web-volume:/var/www/certbot
     ports:
-      - "80:80"
-      - "443:443"
+      - 80:80
+      - 443:443
     command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    networks:
+      - website
+  #
+  #Certbot
+  #
   certbot:
     image: certbot/certbot
-    restart: unless-stopped
+    restart: always
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
+      - web-volume:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - website
+  #
+  # Backend
+  #
+  api:
+    container_name: web-api
+    restart: always
+    image: backend-image-name
+    ports:
+      - 3000:3000
+    networks:
+      - website
+networks:
+  website:
+volumes:
+    web-volume:
